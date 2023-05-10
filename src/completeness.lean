@@ -3,7 +3,7 @@
 import syntax
 import tableau
 import soundness
--- import modelgraphs
+import modelgraphs
 
 open has_sat
 
@@ -286,6 +286,15 @@ begin
     { exact consE, },
   },
   exact locTabEndSatThenSat (localTableau.byLocalRule lr rest) E_endOf_X satE,
+end
+
+-- Theorem 3
+theorem modelExistence : ∀ Z0, consistent Z0 → ∃ Worlds (mG : modelGraph Worlds), Z0 ∈ Worlds :=
+begin
+  intro Z0,
+  intro Z0_is_consistent,
+  let T0 := existsLocalTableauFor (hasLength.lengthOf Z0) Z0,
+  sorry,
 end
 
 -- Theorem 4, page 37

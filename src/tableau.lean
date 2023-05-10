@@ -324,6 +324,7 @@ def inconsistent : finset formula → Prop
 def consistent : finset formula → Prop
 | X := ¬ inconsistent X
 
+-- annoying def, ideally this would give a tableau, not nonempty Prop
 def existsLocalTableauFor : ∀ N α, N = lengthOf α → nonempty (localTableau α) :=
 begin
   intro N,
