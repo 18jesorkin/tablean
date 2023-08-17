@@ -7,6 +7,10 @@ import modelgraphs
 
 open has_sat
 
+
+universe u
+
+
 -- Each local rule preserves truth "upwards"
 lemma localRuleTruth {W : Type} {M : kripkeModel W} {w : W} {X : finset formula} {B : finset (finset formula)} :
   localRule X B → (∃ Y ∈ B, (M,w) ⊨ Y) → (M,w) ⊨ X :=
@@ -135,6 +139,27 @@ begin
   split,
   exact closedTableau.loc ltX leafTableaus,
 end
+
+
+
+
+-- GOAL {P : (Σ root, localTab root) → Sort u} 
+--    : ∀ N Z0, N = lengthofSet Z0  →    ∀ (T : localTab Z0), P (Z0, T)  ↔  ∀ T ∈ EnumerateTab(Z0, N), P (Z0, T)     
+
+
+
+
+
+--example {α : Sort u} {P Q : α → Prop} : (∀ a, P a ↔ Q a) → ((∀ a, P a) ↔ (∀ a, Q a)) :=
+--begin
+--  intro h0,
+--  split,
+--  intros h1 a,
+--  exact (h0 a).mp (h1 a),
+--  intros h1 a,
+--  exact (h0 a).mpr (h1 a),  
+--end
+
 
 -- Converse of Lemma 11
 lemma consToEndNodes {X} {ltX : localTableau X} : consistent X → (∃ en ∈ endNodesOf ⟨X, ltX⟩, consistent en) :=
@@ -288,13 +313,91 @@ begin
   exact locTabEndSatThenSat (localTableau.byLocalRule lr rest) E_endOf_X satE,
 end
 
+
+
+inductive M0 (T0 : Σ Z0, localTableau Z0) : (Σ root, localTableau root) → Prop
+| a : M0 (T0)
+
+| b (T : Σ root, localTableau root) : ∀ Y ∈ NodesOf(T), ∀ local_tab_Y, ((simple Y) ∧ (consistent Y)) → (M0 T) → M0 (sigma.mk Y local_tab_Y)  
+
+
+noncomputable instance (T0 T) : decidable (M0 T0 T) := classical.dec (M0 T0 T)
+
+
+-- S is the set of formulas coming after X or before Y in tableau T
+def S  {T : Σ root, localTableau root} 
+          (XY : finset formula × finset formula) : finset formula      
+      := (finset.bUnion (SuccOf XY.1 T) id)  \  ((finset.bUnion (SuccOf XY.2 T) id) \ XY.2)
+
+
+-- Nodes pairs (X,Y) of the tableau T where:
+  -- X is consistent
+  -- Y is a succesor of X (i.e. There is a subtableau of T with X as root and Y as endNode), consistent, and simple
+-- For the def of g
+ noncomputable def con_leq_con_simple (T : Σ root, localTableau root)
+    
+    := finset.filter 
+    
+    (λ XY : (finset formula × finset formula), (consistent XY.1) ∧ (XY.2 ∈ SuccOf XY.1 T) ∧ (consistent XY.2) ∧ (simple XY.2))  
+
+    (pairNodesOf T)
+
+-- Auxilary definition used for g.
+-- Computes a portion of g for a rooted tableau T:
+
+-- g' T := {@S T XY : node pair (X,Y) of T that satisfies con_leq_con_simple}
+
+--Unioning all (g' T)  over the set of T that satisfy M0 T0 T will give us g. 
+
+noncomputable def g' (T : Σ root, localTableau root) : finset (finset formula) := 
+  
+    finset.bUnion (con_leq_con_simple T) (λ XY, {(@S T XY)}) 
+
+-- GOAL_A: Show that {T : Σ root, localTableau root // M0 T0 T} is a finite type 
+lemma M0_finite {T0 : Σ root, localTableau root } 
+      : finite ({T : Σ root, localTableau root // M0 T0 T}) :=
+begin
+  sorry,
+end
+
+
+noncomputable def finite_to_finset {α : Type*} (f : finite α) : finset α :=
+ (@fintype.of_finite α f).elems  
+
+
+-- Finally able to define g!
+noncomputable def g {T0 : Σ root, localTableau root }
+    : finset (finset formula) :=
+
+  finset.bUnion (finite_to_finset (@M0_finite T0)) (λ T_prfT : {T // M0 T0 T}, g' T_prfT.val)
+
+
 -- Theorem 3
 theorem modelExistence : ∀ Z0, consistent Z0 → ∃ Worlds (mG : modelGraph Worlds), Z0 ∈ Worlds :=
 begin
   intro Z0,
   intro Z0_is_consistent,
   let T0 := existsLocalTableauFor (hasLength.lengthOf Z0) Z0,
+  simp at T0,
+  cases T0,
+  use (@g ⟨Z0,T0⟩),
+  fconstructor,
   sorry,
+  unfold g,
+  unfold g',
+  unfold finset.bUnion,
+  simp at *,
+  use Z0,
+  use T0,
+  use M0.a,
+  {
+    unfold finite_to_finset,
+    sorry,            },
+  
+  {
+    induction T0,
+    sorry,
+    sorry,         },
 end
 
 -- Theorem 4, page 37

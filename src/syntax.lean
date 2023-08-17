@@ -61,6 +61,17 @@ open hasLength
 instance formula_hasLength : hasLength formula := hasLength.mk lengthOfFormula
 instance setFormula_hasLength : hasLength (finset formula) := hasLength.mk lengthOfSet
 
+
+lemma lengthOfFormula_ge_1 {ϕ} : lengthOfFormula ϕ ≥ 1 :=
+begin
+  induction ϕ,
+  all_goals {simp},
+  exact rfl.ge,
+  exact le_add_left ϕ_ih_ᾰ_1,
+end
+
+
+
 @[simp]
 def complexityOfFormula : formula → ℕ
 | (⊥)     := 1

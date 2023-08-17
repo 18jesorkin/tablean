@@ -256,8 +256,46 @@ inductive localTableau : finset formula → Type
 
 open localTableau
 
+
+
+
+
+
+
+
+
+
 -- needed for endNodesOf
 instance localTableau_has_sizeof : has_sizeof (Σ {X}, localTableau X) := ⟨ λ ⟨X, T⟩, lengthOfSet X ⟩
+
+-- nodes of a given localTableau
+@[simp]
+def NodesOf : (Σ X, localTableau X) → finset (finset formula)
+| ⟨X, @byLocalRule _ B lr next⟩ := { X } ∪ B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, NodesOf ⟨Y, next Y h⟩)
+| ⟨X, sim _                   ⟩ := { X }
+
+
+-- Pairs of nodes of a given localTableau
+def pairNodesOf : (Σ X, localTableau X) → finset (finset formula × finset formula)
+| ⟨X, @byLocalRule _ B lr next⟩ := { (X,X) } ∪ B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, ({(X,Y), (Y,X)} ∪ pairNodesOf ⟨Y, next Y h⟩))
+| ⟨X, sim _                   ⟩ := { (X,X) }
+
+
+
+-- nodes that are the successor (or eq to) node A
+-- w.r.t. a given localTableau
+def SuccOf (A : finset formula) : (Σ X, localTableau X) → finset (finset formula)
+| ⟨X, @byLocalRule _ B lr next⟩ := 
+ite (A = X) (NodesOf ⟨X, @byLocalRule _ B lr next⟩) (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, SuccOf ⟨Y, next Y h⟩))
+
+| ⟨X, sim _                   ⟩ := {(ite (A = X) A ∅)} 
+
+
+
+
+
+
+
 
 -- open end nodes of a given localTableau
 @[simp]
@@ -314,6 +352,13 @@ inductive closedTableau : finset formula → Type
 | loc {X} (lt : localTableau X) : (Π Y ∈ endNodesOf ⟨X, lt⟩, closedTableau Y) → closedTableau X
 | atm {X ϕ} : ~□ϕ ∈ X → simple X → closedTableau (projection X ∪ {~ϕ}) → closedTableau X
 
+
+
+
+
+
+
+
 inductive provable : formula → Prop
 | byTableau {φ : formula} : closedTableau { ~ φ } → provable φ
 
@@ -323,6 +368,11 @@ def inconsistent : finset formula → Prop
 
 def consistent : finset formula → Prop
 | X := ¬ inconsistent X
+
+
+noncomputable instance (X) : decidable (consistent X) := classical.dec (consistent X)
+
+
 
 -- annoying def, ideally this would give a tableau, not nonempty Prop
 def existsLocalTableauFor : ∀ N α, N = lengthOf α → nonempty (localTableau α) :=
