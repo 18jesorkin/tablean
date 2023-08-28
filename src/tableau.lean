@@ -10,6 +10,8 @@ import syntax
 import semantics
 import setsimp
 
+set_option pp.beta true
+
 open formula
 open hasLength
 
@@ -95,27 +97,27 @@ end
 
 lemma projection_set_length_leq : ∀ X, lengthOfSet (projection X) ≤ lengthOfSet X :=
 begin
-intro X,
-apply finset.induction_on X,
-{ unfold lengthOfSet, simp, intros f f_in_empty, cases f_in_empty, },
-{ intros f S f_not_in_S IH,
-  unfold lengthOfSet,
-  rw finset.sum_insert f_not_in_S,
-  simp,
-  have insert_comm_proj : ∀ X f, projection (insert f X) = (projection {f}) ∪ (projection X), {
-    intros X f,
-    unfold projection,
-    ext1 g,
+  intro X,
+  apply finset.induction_on X,
+  { unfold lengthOfSet, simp, intros f f_in_empty, cases f_in_empty, },
+  { intros f S f_not_in_S IH,
+    unfold lengthOfSet,
+    rw finset.sum_insert f_not_in_S,
     simp,
+    have insert_comm_proj : ∀ X f, projection (insert f X) = (projection {f}) ∪ (projection X), {
+      intros X f,
+      unfold projection,
+      ext1 g,
+      simp,
+    },
+    { calc (projection (insert f S)).sum lengthOfFormula
+        = (projection (insert f S)).sum lengthOfFormula : refl _
+    ... = (projection {f} ∪ projection S).sum lengthOfFormula : by { rw insert_comm_proj S f, }
+    ... ≤ (projection {f}).sum lengthOfFormula + (projection S).sum lengthOfFormula : by { apply sum_union_le, }
+    ... ≤ lengthOfFormula f + (projection S).sum lengthOfFormula : by { simp only [add_le_add_iff_right, projection_length_leq], }
+    ... ≤ lengthOfFormula f + S.sum lengthOfFormula : by { simp, apply IH, },
+    },
   },
-  { calc (projection (insert f S)).sum lengthOfFormula
-       = (projection (insert f S)).sum lengthOfFormula : refl _
-   ... = (projection {f} ∪ projection S).sum lengthOfFormula : by { rw insert_comm_proj S f, }
-   ... ≤ (projection {f}).sum lengthOfFormula + (projection S).sum lengthOfFormula : by { apply sum_union_le, }
-   ... ≤ lengthOfFormula f + (projection S).sum lengthOfFormula : by { simp only [add_le_add_iff_right, projection_length_leq], }
-   ... ≤ lengthOfFormula f + S.sum lengthOfFormula : by { simp, apply IH, },
-  },
-},
 end
 
 -- local rules: given this set, we get these sets as child nodes
@@ -129,6 +131,12 @@ inductive localRule : finset formula → finset (finset formula) → Type
 -- splitting rule:
 | nCo {X ϕ ψ} (h : ~(ϕ ⋏ ψ)   ∈ X) : localRule X { X \ {~(ϕ⋏ψ)} ∪ {~ϕ}
                                                  , X \ {~(ϕ⋏ψ)} ∪ {~ψ}  }
+
+
+
+
+
+
 
 -- If X is not simple, then a local rule can be applied.
 -- (page 13)
@@ -258,8 +266,20 @@ open localTableau
 
 
 
-
-
+-- Classification of localTableau for simple X
+lemma SimplelocalTab {X : finset formula} {T : localTableau X}
+            : (simple X) → (∃ h0, T = sim h0) ∨ (∃ h0 h1, T = byLocalRule(@localRule.bot X h0) h1) ∨ (∃ h0 ϕ h1, T = byLocalRule(@localRule.not X h0 ϕ) h1) :=
+begin
+  intro simple_X,
+  cases T, swap 2,
+  finish,
+  cases T__x,
+  finish,
+  finish,
+  unfold simple at simple_X, specialize simple_X (~~T__x_ϕ) T__x_h, tauto,
+  unfold simple at simple_X, specialize simple_X (T__x_ϕ⋏T__x_ψ) T__x_h, tauto,
+  unfold simple at simple_X, specialize simple_X (~(T__x_ϕ⋏T__x_ψ)) T__x_h, tauto,
+end
 
 
 
@@ -275,6 +295,7 @@ def NodesOf : (Σ X, localTableau X) → finset (finset formula)
 | ⟨X, sim _                   ⟩ := { X }
 
 
+
 -- Pairs of nodes of a given localTableau
 def pairNodesOf : (Σ X, localTableau X) → finset (finset formula × finset formula)
 | ⟨X, @byLocalRule _ B lr next⟩ := { (X,X) } ∪ B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, ({(X,Y), (Y,X)} ∪ pairNodesOf ⟨Y, next Y h⟩))
@@ -282,13 +303,52 @@ def pairNodesOf : (Σ X, localTableau X) → finset (finset formula × finset fo
 
 
 
--- nodes that are the successor (or eq to) node A
+
+-- A path is a list of nodes in a localTab T.
+-- This function appends a head node to a finset of Paths.
+def append (head : finset formula) (Paths : finset (list (finset formula))) : finset (list (finset formula))
+                        := finset.bUnion Paths (λ path, {head :: path})      
+
+-- Finset of all paths in a localTableau 
+def all_paths : (Σ root, localTableau root) → finset (list (finset formula))
+| ⟨root, @byLocalRule _ B lr next⟩ := {[root]} ∪ (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet root := localRulesDecreaseLength lr Y h, all_paths ⟨Y, next Y h⟩)) ∪ (append root (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet root := localRulesDecreaseLength lr Y h, all_paths ⟨Y, next Y h⟩)))
+
+| ⟨root, sim _                   ⟩ := {[root]} 
+
+-- Collection of all paths starting at head and ending at tail in localTab rootT.
+-- NEED TO PROVE LATER: localRulesDecreaseLength implies length of all paths is ≤ lengthOfSet(head)+1
+def Paths (head  tail : finset formula) (rootT : Σ root, localTableau root) (n : ℕ := lengthOfSet(head)+1) : finset (list (finset formula))
+
+    :=  finset.filter (λ l, (list.head' l = some head) ∧ (list.last' l = some tail) ∧ (list.length l ≤ n)) (all_paths rootT)
+
+
+
+
+
+#reduce (2 ∈ [1,2,3])
+
+example : ([{p}] ++ [{q}, {r}]).inth 2 = ({r} : finset formula) :=
+begin
+  exact rfl,
+end
+example : ([{p}] ++ [{q}, {r}]).inth 3 = (∅ : finset formula) :=
+begin
+  exact rfl,
+end
+
+
+
+-- OLD DEFINITION OF DIRECT SUCCESSOR
+-- nodes that are the direct successor of node A
 -- w.r.t. a given localTableau
 def SuccOf (A : finset formula) : (Σ X, localTableau X) → finset (finset formula)
 | ⟨X, @byLocalRule _ B lr next⟩ := 
 ite (A = X) (NodesOf ⟨X, @byLocalRule _ B lr next⟩) (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, SuccOf ⟨Y, next Y h⟩))
 
 | ⟨X, sim _                   ⟩ := {(ite (A = X) A ∅)} 
+
+
+
 
 
 
@@ -325,8 +385,8 @@ begin
   ext1,
   simp only [endNodesOf, finset.mem_singleton, finset.mem_bUnion, finset.mem_attach, exists_true_left, subtype.exists],
   split,
-{ intro lhs, rcases lhs with ⟨b,bDef,bIn⟩, subst bDef, exact bIn, },
-{ intro rhs, use (X \ {ϕ⋏ψ} ∪ {ϕ,ψ}), split, exact rhs, refl, },
+  { intro lhs, rcases lhs with ⟨b,bDef,bIn⟩, subst bDef, exact bIn, },
+  { intro rhs, use (X \ {ϕ⋏ψ} ∪ {ϕ,ψ}), split, exact rhs, refl, },
 end
 
 lemma nCoEndNodes {X ϕ ψ h n} : endNodesOf ⟨X, localTableau.byLocalRule (@localRule.nCo X ϕ ψ h) n⟩ =
@@ -346,6 +406,25 @@ begin
     { use (X \ {~(ϕ⋏ψ)} ∪ {~ψ}), split, exact rhs, simp, },
   },
 end
+
+lemma endNodesSimple {Z} {T : localTableau Z} : ∀ en ∈ endNodesOf ⟨Z, T⟩, simple en :=
+begin
+  induction T with Y B locRuleYB Z_next IH Y simple_Y, swap 2,
+  intros en h0, simp at h0, finish,
+  dsimp at IH, intros en h0, norm_num at h0, cases h0 with a a_h, cases a_h with h0 h1,
+  exact IH a ((iff.refl (a ∈ B)).mpr h0) en h1,
+end
+
+lemma SuccOfEndNodes {en Z : finset formula} {T : localTableau Z} 
+                    :  (en ∈ endNodesOf ⟨Z,T⟩) → (SuccOf en ⟨Z,T⟩ ⊆ {en}) := 
+begin
+  revert en,
+  induction T with Y B locRuleYB Y_next IH Y simple_Y, swap 2,
+  sorry, sorry,
+end
+
+
+
 
 -- Definition 16, page 29
 inductive closedTableau : finset formula → Type
