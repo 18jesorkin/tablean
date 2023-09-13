@@ -128,6 +128,8 @@ begin
   tauto,
 end
 
+
+-- This is NOT LEMMA 11. Lemma 11 is about direct successors, this is about endnodes
 -- Lemma 11 (but rephrased to be about local tableau!?)
 lemma inconsUpwards {X} {ltX : localTableau X} : (Π en ∈ endNodesOf ⟨X, ltX⟩, inconsistent en) → inconsistent X :=
 begin

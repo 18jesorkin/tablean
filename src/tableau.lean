@@ -134,6 +134,87 @@ inductive localRule : finset formula → finset (finset formula) → Type
 
 
 
+--instance h0 {X : finset formula} {Y : finset (finset formula)} : decidable (⊥ ∈ X ∧ Y = ∅) := 
+--begin
+  --exact and.decidable,
+--end
+
+--instance h1 {X : finset formula} {Y : finset (finset formula)} : decidable (∃ ϕ ∈ X, ~ϕ ∈ X ∧ Y = ∅) := 
+--begin
+  --exact finset.decidable_dexists_finset,
+--end
+
+
+instance h2 {X : finset formula} {Y : finset (finset formula)} : decidable (∃ nnα ∈ X, ∃ X' ∈ Y, ∃ α ∈ X', (nnα = ~~α) ∧ (X' = X \ {nnα} ∪ {α}) ∧ (Y = {X'})) := 
+begin
+  exact finset.decidable_dexists_finset,
+end
+
+instance h3 {X : finset formula} {Y : finset (finset formula)} : decidable (∃ ϕ_ψ ∈ X, ∃ X' ∈ Y, ∃ ϕ ψ ∈ X', (ϕ_ψ = ϕ ⋏ ψ) ∧ (X' = X \ {ϕ_ψ} ∪ {ϕ,ψ}) ∧ (Y = {X'})) := 
+begin
+  exact finset.decidable_dexists_finset,
+end
+
+instance h4_1 {nϕ} :  decidable(∃ ϕ, nϕ = ~ϕ) :=
+begin
+  sorry,
+end
+
+instance h4_2 {ϕ_ψ} : decidable(∃ ϕ ψ, ϕ_ψ = (ϕ ⋏ ψ)) :=
+begin
+  sorry,
+end
+
+instance h4_3 {nϕ_ψ} : decidable(∃ ϕ ψ, nϕ_ψ = ~(ϕ ⋏ ψ)) :=
+begin
+  sorry,
+end
+
+instance h4_4 {nϕ_ψ nϕ nψ} :  decidable(∃ ϕ ψ, nϕ_ψ = ~(ϕ ⋏ ψ) ∧ nϕ = ~ϕ ∧ nψ = ~ψ) :=
+begin
+  by_cases h_ϕ1    : ∃ ϕ1, (nϕ = ~ϕ1),
+  by_cases h_ψ1    : ∃ ψ1, (nψ = ~ψ1),
+  by_cases h_ϕ2_ψ2 : ∃ ϕ2 ψ2, nϕ_ψ = ~(ϕ2 ⋏ ψ2),
+  rotate 1,
+  refine is_false _, intro h0, rcases h0 with ⟨ϕ, ψ, h0⟩, finish,
+  refine is_false _, intro h0, rcases h0 with ⟨ϕ, ψ, h0⟩, finish,
+  refine is_false _, intro h0, rcases h0 with ⟨ϕ, ψ, h0⟩, finish,
+  rcases h_ϕ1,
+end
+
+instance h4 {X : finset formula} {Y : finset (finset formula)} : decidable (∃ nϕ_ψ ∈ X, ∃ A B ∈ Y, ∃ nϕ ∈ A, ∃ nψ ∈ B, (∃ ϕ ψ, nϕ_ψ = ~(ϕ ⋏ ψ) ∧ nϕ = ~ϕ ∧ nψ = ~ψ) ∧ (A = X \ {nϕ_ψ} ∪ {nϕ}) ∧ (B = X \ {nϕ_ψ} ∪ {nψ}) ∧ (Y = {A,B})):=
+begin
+  exact finset.decidable_dexists_finset,
+end
+
+
+
+instance    {X : finset formula} {Y : finset (finset formula)} : decidable (nonempty (localRule X Y)) :=
+begin
+  --by_cases (⊥ ∈ X ∧ Y = ∅) ∨ (∃ ϕ, ϕ ∈ X ∧ ~ϕ ∈ X ∧ Y = ∅) ∨ (∃ ϕ, ~~ϕ ∈ X ∧ Y = { X \ {~~ϕ} ∪ {ϕ} }) ∨ (∃ ϕ ψ, ϕ ⋏ ψ ∈ X ∧ Y = { X \ {ϕ⋏ψ} ∪ {ϕ,ψ} }) ∨ (∃ ϕ ψ, ~(ϕ ⋏ ψ)∈ X ∧ Y = { X \ {~(ϕ⋏ψ)} ∪ {~ϕ}, X \ {~(ϕ⋏ψ)} ∪ {~ψ} }),
+  by_cases h0 : ⊥ ∈ X ∧ Y = ∅,
+  refine is_true _, cases h0, subst h0_right, fconstructor, exact localRule.bot h0_left,
+
+  by_cases h1 : (∃ ϕ ∈ X, ~ϕ ∈ X ∧ Y = ∅),
+  refine is_true _, cases h1 with α, cases h1_h with h1, cases h1_h_h with h2 h3, subst h3, fconstructor, exact localRule.not ⟨h1,h2⟩,
+
+  by_cases h2 : (∃ ϕ, ~~ϕ ∈ X ∧ Y = { X \ {~~ϕ} ∪ {ϕ} }),
+  refine is_true _, cases h2 with α, cases h2_h with h2 h3,                           subst h3, fconstructor, exact localRule.neg h2,
+
+  by_cases h3 : (∃ ϕ ψ, ϕ ⋏ ψ ∈ X ∧ Y = { X \ {ϕ⋏ψ} ∪ {ϕ,ψ} }),
+  refine is_true _, cases h3 with α, cases h3_h with β, cases h3_h_h with h3 h4,      subst h4, fconstructor, exact localRule.con h3,
+
+  by_cases h4 : (∃ ϕ ψ, ~(ϕ ⋏ ψ)∈ X ∧ Y = { X \ {~(ϕ⋏ψ)} ∪ {~ϕ}, X \ {~(ϕ⋏ψ)} ∪ {~ψ} }),
+  refine is_true _, cases h4 with α, cases h4_h with β, cases h4_h_h with h4 h5,      subst h5, fconstructor, exact localRule.nCo h4, 
+
+
+  refine is_false _,
+  refine imp_false.mp _, intro h5, cases h5, cases h5,
+  finish, finish, simp at h2, specialize h2 h5_ϕ h5_h, finish, simp at h3, specialize h3 h5_ϕ h5_ψ h5_h, finish, simp at h4, specialize h4 h5_ϕ h5_ψ h5_h, finish,
+end
+
+
+
 
 
 
@@ -305,13 +386,14 @@ def pairNodesOf : (Σ X, localTableau X) → finset (finset formula × finset fo
 
 
 -- A path is a list of nodes in a localTab T.
--- This function appends a head node to a finset of Paths.
+-- This function appends a head node to every path in Paths (if path.inth 0 ≠ head).
 def append (head : finset formula) (Paths : finset (list (finset formula))) : finset (list (finset formula))
-                        := finset.bUnion Paths (λ path, {head :: path})      
+                        := finset.bUnion Paths (λ path, {ite (path.inth 0 ≠ head) (head :: path) (path)})      
 
--- Finset of all paths in a localTableau 
+-- Finset of all paths in a localTableau.
+-- 
 def all_paths : (Σ root, localTableau root) → finset (list (finset formula))
-| ⟨root, @byLocalRule _ B lr next⟩ := {[root]} ∪ (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet root := localRulesDecreaseLength lr Y h, all_paths ⟨Y, next Y h⟩)) ∪ (append root (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet root := localRulesDecreaseLength lr Y h, all_paths ⟨Y, next Y h⟩)))
+| ⟨root, @byLocalRule _ B lr next⟩ := {[root]} ∪ (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet root := localRulesDecreaseLength lr Y h, all_paths ⟨Y, next Y h⟩)) ∪ (append root (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet root := localRulesDecreaseLength lr Y h, append Y (all_paths ⟨Y, next Y h⟩))))
 
 | ⟨root, sim _                   ⟩ := {[root]} 
 
@@ -322,7 +404,7 @@ def Paths (head  tail : finset formula) (rootT : Σ root, localTableau root) (n 
     :=  finset.filter (λ l, (list.head' l = some head) ∧ (list.last' l = some tail) ∧ (list.length l ≤ n)) (all_paths rootT)
 
 
-
+#reduce (10-400)
 
 
 #reduce (2 ∈ [1,2,3])
