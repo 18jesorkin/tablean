@@ -296,42 +296,24 @@ begin
 end
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 inductive M0 (T0 : Σ Z0, localTableau Z0) : (Σ root, localTableau root) → Prop
 | a : M0 (T0)
 
 | b (T : Σ root, localTableau root) : ∀ Y ∈ NodesOf(T), ∀ local_tab_Y, ((simple Y) ∧ (consistent Y)) → (M0 T) → M0 (sigma.mk Y local_tab_Y)  
-
-
-def path {en} (rootT : Σ root, localTableau root) : (en ∈ endNodesOf rootT) → nonempty(finset (finset formula)) :=
-begin
-  cases rootT with root T,
-  induction T,
-  case byLocalRule : root B rootlRB Y_next IH {
-    dsimp at IH,
-    intro h0, simp at h0, rcases h0 with ⟨bi, h0, h1⟩,
-    specialize IH bi h0 h1, cases IH, refine nonempty.intro _,
-    exact ({root, bi} ∪ IH),
-  },
-  case sim : root h0 {
-    intro h1, simp at h1,
-    refine nonempty.intro _,
-    exact {root},
-  },
-end
-
-
--- S is the set of formulas ϕ ∈ Z, where X ≤ Z ≤ Y 
-def S {en} (rootT : Σ root, localTableau root) 
-          : (en ∈ endNodesOf rootT) → nonempty (finset formula) :=      
-begin
-  intro h0,
-  suffices h1 : nonempty(finset (finset formula)) →  nonempty (finset formula),
-  swap 2,
-  intro h1, cases h1, exact nonempty.intro (finset.bUnion (h1) (λ x, x)),
-  exact (h1 (path rootT h0)),
-end
-
-
 
 
 

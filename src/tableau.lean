@@ -283,7 +283,14 @@ end
 -- needed for endNodesOf
 instance localTableau_has_sizeof : has_sizeof (Σ {X}, localTableau X) := ⟨ λ ⟨X, T⟩, lengthOfSet X ⟩
 
--- nodes of a given localTableau
+-- open end nodes of a given localTableau
+@[simp]
+def endNodesOf : (Σ X, localTableau X) → finset (finset formula)
+| ⟨X, @byLocalRule _ B lr next⟩ := B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, endNodesOf ⟨Y, next Y h⟩)
+| ⟨X, sim _                   ⟩ := { X }
+
+
+-- Nodes of a given localTableau
 @[simp]
 def NodesOf : (Σ X, localTableau X) → finset (finset formula)
 | ⟨X, @byLocalRule _ B lr next⟩ := { X } ∪ B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, NodesOf ⟨Y, next Y h⟩)
@@ -291,73 +298,39 @@ def NodesOf : (Σ X, localTableau X) → finset (finset formula)
 
 
 
--- Pairs of nodes of a given localTableau
-def pairNodesOf : (Σ X, localTableau X) → finset (finset formula × finset formula)
-| ⟨X, @byLocalRule _ B lr next⟩ := { (X,X) } ∪ B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, ({(X,Y), (Y,X)} ∪ pairNodesOf ⟨Y, next Y h⟩))
-| ⟨X, sim _                   ⟩ := { (X,X) }
 
 
 
 
--- A path is a list of nodes in a localTab T.
--- This function appends a head node to every path in Paths (if path.inth 0 ≠ head).
-def append (head : finset formula) (Paths : finset (list (finset formula))) : finset (list (finset formula))
-                        := finset.bUnion Paths (λ path, {ite (path.inth 0 ≠ head) (head :: path) (path)})      
+-- Finset of all paths starting at X (and ending at an endnode) in localTab ⟨X, T⟩ 
+def pathsOf : (Σ X, localTableau X) → finset (finset (finset formula))
+| ⟨X, @byLocalRule _ B lr next⟩ := B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h,
 
--- Finset of all paths in a localTableau.
--- 
-def all_paths : (Σ root, localTableau root) → finset (list (finset formula))
-| ⟨root, @byLocalRule _ B lr next⟩ := {[root]} ∪ (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet root := localRulesDecreaseLength lr Y h, all_paths ⟨Y, next Y h⟩)) ∪ (append root (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet root := localRulesDecreaseLength lr Y h, append Y (all_paths ⟨Y, next Y h⟩))))
+                                  (pathsOf ⟨Y, next Y h⟩).bUnion (λ path, {{X} ∪ path}))
 
-| ⟨root, sim _                   ⟩ := {[root]} 
-
--- Collection of all paths starting at head and ending at tail in localTab rootT.
--- NEED TO PROVE LATER: localRulesDecreaseLength implies length of all paths is ≤ lengthOfSet(head)+1
-def Paths (head  tail : finset formula) (rootT : Σ root, localTableau root) (n : ℕ := lengthOfSet(head)+1) : finset (list (finset formula))
-
-    :=  finset.filter (λ l, (list.head' l = some head) ∧ (list.last' l = some tail) ∧ (list.length l ≤ n)) (all_paths rootT)
+| ⟨X, sim _                   ⟩ := {{ X }}
 
 
-#reduce (10-400)
+-- Finset of all paths starting at X and ending at endnode en in ⟨X, T⟩ 
+def pathsOfen {en} (rootT : Σ root, localTableau root) (h0 : en ∈ endNodesOf rootT) : finset (finset (finset formula))
+  := finset.filter (λ path, en ∈ path) (pathsOf rootT)
 
 
-#reduce (2 ∈ [1,2,3])
+-- S is the set of formulas ϕ ∈ Z, where root ≤ Z ≤ en 
+-- Formally, S (root) (en) := ∪ (node ∈ path ∈ pathsOfen(root,en)) (node)
+def S {en} (rootT : Σ root, localTableau root) 
+          (h0 : en ∈ endNodesOf rootT) : finset formula := (pathsOfen rootT h0).bUnion (λ path, path.bUnion (λ node, node))   
 
-example : ([{p}] ++ [{q}, {r}]).inth 2 = ({r} : finset formula) :=
+
+
+
+-- "Example" of applying S to 2 "paths" of nodes of numbers: {{1}, {1,2}, {1,2,3}} and {{1}, {1,4}, {1,2,3}}
+-- "Root" is {1}, "endnode" is {1,2,3}, so S ({1}) ({1,2,3}) = {1,2,3,4}
+example : (({{{1}, {1,2}, {1,2,3}}, {{1}, {1,4}, {1,2,3}}} : finset (finset (finset ℕ))).bUnion  (λ path, path.bUnion (λ node, node)) : finset ℕ) = {1,2,3,4} :=
 begin
-  exact rfl,
-end
-example : ([{p}] ++ [{q}, {r}]).inth 3 = (∅ : finset formula) :=
-begin
-  exact rfl,
+  exact dec_trivial,
 end
 
-
-
--- OLD DEFINITION OF DIRECT SUCCESSOR
--- nodes that are the direct successor of node A
--- w.r.t. a given localTableau
-def SuccOf (A : finset formula) : (Σ X, localTableau X) → finset (finset formula)
-| ⟨X, @byLocalRule _ B lr next⟩ := 
-ite (A = X) (NodesOf ⟨X, @byLocalRule _ B lr next⟩) (B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, SuccOf ⟨Y, next Y h⟩))
-
-| ⟨X, sim _                   ⟩ := {(ite (A = X) A ∅)} 
-
-
-
-
-
-
-
-
-
-
-
--- open end nodes of a given localTableau
-@[simp]
-def endNodesOf : (Σ X, localTableau X) → finset (finset formula)
-| ⟨X, @byLocalRule _ B lr next⟩ := B.attach.bUnion (λ ⟨Y,h⟩, have lengthOfSet Y < lengthOfSet X := localRulesDecreaseLength lr Y h, endNodesOf ⟨Y, next Y h⟩)
-| ⟨X, sim _                   ⟩ := { X }
 
 @[simp]
 lemma botNoEndNodes {X h n} : endNodesOf ⟨X, localTableau.byLocalRule (@localRule.bot X h) n⟩ = ∅ := by { unfold endNodesOf, simp, }
@@ -436,6 +409,8 @@ def consistent : finset formula → Prop
 | X := ¬ inconsistent X
 
 
+-- Need decidability of consistent X to define g from Thereom 3 later.
+-- Need to later replace this with explicit decision procedure for consitent X.
 noncomputable instance (X) : decidable (consistent X) := classical.dec (consistent X)
 
 

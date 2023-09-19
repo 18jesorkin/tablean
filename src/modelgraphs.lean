@@ -16,10 +16,9 @@ def saturated : finset formula → Prop
 -- Definition 19, page 31
 -- TODO: change [] to [A] later
 
---Changed "Worlds : finset (finset formula)" to "Worlds : set (finset formula)"
 
 @[simp]
-def modelGraph ( Worlds : set (finset formula) ) :=
+def modelGraph ( Worlds : finset (finset formula) ) :=
   let
     W := subtype (λ x, x ∈ Worlds),
     i   := ∀ X : W, saturated X.val  ∧  ⊥ ∉ X.val  ∧  (∀ P, P ∈ X.val  →  ~P ∉ X.val),
